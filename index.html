@@ -79,6 +79,15 @@ canvas#three-canvas {
   transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
 }
 
+/* Hide UI during calibration */
+body.calibrating #side-panel,
+body.calibrating #top-controls,
+body.calibrating #mobile-panel-toggle,
+body.calibrating #webcam-container {
+  opacity: 0;
+  pointer-events: none;
+}
+
 #side-panel::-webkit-scrollbar { display: none; }
 
 #side-panel.hidden {
@@ -475,92 +484,234 @@ canvas#three-canvas {
   font-family: 'Space Mono', monospace;
 }
 
-/* ─── Onboarding ─── */
-#onboarding {
+/* ─── Calibration Overlay ─── */
+#calibration-overlay {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: 500;
-  padding: 32px 28px;
-  width: 360px;
-  max-width: calc(100vw - 32px);
+  background: rgba(10, 6, 18, 0.92);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  transition: opacity 0.6s ease;
+}
+
+#calibration-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Camera permission screen */
+#cam-permission-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
   animation: fadeInUp 0.5s ease;
 }
 
-#onboarding.hidden {
-  display: none;
-}
+#cam-permission-screen.hidden { display: none; }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translate(-50%, -45%); }
-  to { opacity: 1; transform: translate(-50%, -50%); }
-}
-
-.onboarding-title {
-  font-size: 22px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.onboarding-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.onboarding-step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.onboarding-icon {
-  font-size: 22px;
-  width: 40px;
-  height: 40px;
+.cam-perm-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface);
-  border-radius: 10px;
-  flex-shrink: 0;
+  font-size: 36px;
+  box-shadow: 0 8px 40px var(--primary-glow);
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.onboarding-step-title {
-  font-size: 13px;
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 8px 40px var(--primary-glow); }
+  50% { box-shadow: 0 8px 60px rgba(168, 85, 247, 0.6); }
+}
+
+.cam-perm-title {
+  font-size: 24px;
   font-weight: 600;
-  color: var(--text);
+  text-align: center;
+  background: linear-gradient(135deg, #fff 40%, var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.onboarding-step-desc {
-  font-size: 11.5px;
+.cam-perm-desc {
+  font-size: 13px;
   color: var(--text-muted);
-  line-height: 1.4;
+  text-align: center;
+  max-width: 300px;
+  line-height: 1.6;
 }
 
-.onboarding-dismiss {
+.cam-perm-btn {
   background: linear-gradient(135deg, var(--primary-dark), var(--primary));
   border: none;
   color: #fff;
-  padding: 12px 20px;
+  padding: 14px 32px;
   border-radius: 50px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   font-family: 'Outfit', sans-serif;
   cursor: pointer;
   transition: all 0.25s ease;
-  text-align: center;
   box-shadow: 0 4px 20px var(--primary-glow);
 }
 
-.onboarding-dismiss:hover {
-  transform: translateY(-1px);
+.cam-perm-btn:hover {
+  transform: translateY(-2px);
   box-shadow: 0 6px 28px var(--primary-glow);
 }
+
+/* Fist calibration screen */
+#fist-calibration-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: fadeInUp 0.5s ease;
+}
+
+#fist-calibration-screen.active { display: flex; }
+
+.calib-cam-preview {
+  position: relative;
+  width: 280px;
+  height: 210px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 2px solid var(--border-light);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.calib-cam-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.calib-cam-preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+/* Fist outline SVG overlay */
+.fist-guide-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.fist-guide-overlay.detected {
+  opacity: 0;
+}
+
+.fist-guide-svg {
+  width: 120px;
+  height: 140px;
+  opacity: 0.6;
+  animation: fist-pulse 2s ease-in-out infinite;
+}
+
+@keyframes fist-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.04); }
+}
+
+.calib-title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+}
+
+.calib-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.calib-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-family: 'Space Mono', monospace;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.calib-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: all 0.3s ease;
+}
+
+.calib-status.detecting .calib-status-dot {
+  background: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+}
+
+.calib-status.ready .calib-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
+}
+
+.calib-progress-ring {
+  width: 200px;
+  height: 200px;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  pointer-events: none;
+}
+
+.calib-progress-ring circle {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+.calib-progress-ring .bg { stroke: rgba(255,255,255,0.08); }
+.calib-progress-ring .fg { 
+  stroke: var(--primary); 
+  stroke-dasharray: 565.48;
+  stroke-dashoffset: 565.48;
+  transition: stroke-dashoffset 0.1s linear;
+  filter: drop-shadow(0 0 6px var(--primary-glow));
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Old Onboarding (removed, keeping hidden class for compat) ─── */
+#onboarding { display: none; }
+#onboarding.hidden { display: none; }
 
 /* ─── Scrollbar (hidden) ─── */
 ::-webkit-scrollbar { display: none; }
@@ -641,7 +792,7 @@ canvas#three-canvas {
 }
 </style>
 </head>
-<body>
+<body class="calibrating">
 
 <!-- Loading -->
 <div id="loading-overlay">
@@ -649,40 +800,52 @@ canvas#three-canvas {
   <div class="loader-text">Initializing</div>
 </div>
 
-<!-- Onboarding Hints -->
-<div id="onboarding" class="glass">
-  <div class="onboarding-title">Welcome to <span style="background:linear-gradient(135deg,#fff 40%,var(--primary-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Stardust.el</span></div>
-  <div class="onboarding-steps">
-    <div class="onboarding-step">
-      <span class="onboarding-icon">📷</span>
-      <div>
-        <div class="onboarding-step-title">Enable Camera</div>
-        <div class="onboarding-step-desc">Tap the camera icon (top right) and allow camera access</div>
+<!-- Calibration Overlay -->
+<div id="calibration-overlay">
+  <!-- Step 1: Camera Permission -->
+  <div id="cam-permission-screen">
+    <div class="cam-perm-icon">📷</div>
+    <div class="cam-perm-title">Welcome to Stardust.el</div>
+    <div class="cam-perm-desc">This experience uses your camera to track hand gestures. Allow camera access to begin.</div>
+    <button class="cam-perm-btn" id="btn-allow-cam">Enable Camera ✦</button>
+  </div>
+
+  <!-- Step 2: Fist Calibration -->
+  <div id="fist-calibration-screen">
+    <div class="calib-title">Make a Fist ✊</div>
+    <div class="calib-subtitle">Close your hand into a fist in front of the camera to start the experience</div>
+    <div class="calib-cam-preview">
+      <video id="calib-video" autoplay playsinline muted></video>
+      <canvas id="calib-hand-canvas"></canvas>
+      <!-- Fist guide outline -->
+      <div class="fist-guide-overlay" id="fist-guide">
+        <svg class="fist-guide-svg" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Fist silhouette with dotted stroke -->
+          <path d="M30 95 C30 95 25 80 25 65 C25 55 30 50 37 50 C37 45 40 38 47 38 C47 33 52 27 60 27 C68 27 73 33 73 38 C80 38 83 45 83 50 C90 50 95 55 95 65 C95 80 90 95 90 95 C88 108 82 120 60 120 C38 120 32 108 30 95Z"
+            stroke="rgba(168, 85, 247, 0.8)" 
+            stroke-width="2" 
+            stroke-dasharray="6 4"
+            fill="rgba(168, 85, 247, 0.05)"
+          />
+          <!-- Finger fold lines -->
+          <path d="M38 55 C45 52 55 51 62 52" stroke="rgba(168, 85, 247, 0.4)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <path d="M62 52 C70 52 78 53 83 55" stroke="rgba(168, 85, 247, 0.4)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <path d="M35 70 C45 67 75 67 85 70" stroke="rgba(168, 85, 247, 0.3)" stroke-width="1" stroke-dasharray="3 3"/>
+          <!-- Thumb tuck line -->
+          <path d="M30 75 C32 68 35 60 37 55" stroke="rgba(168, 85, 247, 0.4)" stroke-width="1.5" stroke-dasharray="3 3"/>
+        </svg>
       </div>
+      <!-- Progress ring -->
+      <svg class="calib-progress-ring" viewBox="0 0 200 200" id="calib-ring">
+        <circle class="bg" cx="100" cy="100" r="90"/>
+        <circle class="fg" cx="100" cy="100" r="90" id="calib-ring-fg"/>
+      </svg>
     </div>
-    <div class="onboarding-step">
-      <span class="onboarding-icon">✊</span>
-      <div>
-        <div class="onboarding-step-title">Close Hand</div>
-        <div class="onboarding-step-desc">Make a fist to contract the particles into shape</div>
-      </div>
-    </div>
-    <div class="onboarding-step">
-      <span class="onboarding-icon">🖐</span>
-      <div>
-        <div class="onboarding-step-title">Open Hand</div>
-        <div class="onboarding-step-desc">Open your palm to disperse or reveal hidden effects</div>
-      </div>
-    </div>
-    <div class="onboarding-step">
-      <span class="onboarding-icon">👆</span>
-      <div>
-        <div class="onboarding-step-title">Drag to Rotate</div>
-        <div class="onboarding-step-desc">Click & drag (or swipe on mobile) to rotate the view</div>
-      </div>
+    <div class="calib-status" id="calib-status">
+      <span class="calib-status-dot"></span>
+      <span id="calib-status-text">Waiting for hand...</span>
     </div>
   </div>
-  <button class="onboarding-dismiss" id="onboarding-dismiss">Got it, let's go ✦</button>
 </div>
 
 <!-- 3D Canvas -->
@@ -1411,6 +1574,7 @@ document.getElementById('btn-toggle-panel').addEventListener('click', () => {
 
 document.getElementById('btn-toggle-cam').addEventListener('click', () => {
   if (!state.cameraActive) {
+    // If calibration was somehow skipped, init normally
     initHandTracking();
   } else {
     // Toggle webcam visibility
@@ -1458,7 +1622,7 @@ const orbitRadius = 8;
 
 function onPointerDown(e) {
   // Don't capture drag on UI elements
-  if (e.target.closest('#side-panel, #webcam-container, #top-controls, #onboarding, #mobile-panel-toggle, .ctrl-btn')) return;
+  if (e.target.closest('#side-panel, #webcam-container, #top-controls, #calibration-overlay, #mobile-panel-toggle, .ctrl-btn')) return;
   isDragging = true;
   const pt = e.touches ? e.touches[0] : e;
   prevPointerX = pt.clientX;
@@ -1505,11 +1669,213 @@ function updateCameraOrbit() {
 updateCameraOrbit();
 
 // ══════════════════════════════════════════
-//  ONBOARDING
+//  CALIBRATION FLOW
 // ══════════════════════════════════════════
-document.getElementById('onboarding-dismiss').addEventListener('click', () => {
-  document.getElementById('onboarding').classList.add('hidden');
+let calibrationComplete = false;
+let calibFistHoldTime = 0;
+const CALIB_FIST_REQUIRED = 1.5; // seconds of holding fist
+let calibMpHands = null;
+let calibStream = null;
+
+document.getElementById('btn-allow-cam').addEventListener('click', async () => {
+  try {
+    calibStream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+    
+    // Show calibration screen
+    document.getElementById('cam-permission-screen').classList.add('hidden');
+    document.getElementById('fist-calibration-screen').classList.add('active');
+    
+    // Set up calibration video
+    const calibVideo = document.getElementById('calib-video');
+    calibVideo.srcObject = calibStream;
+    
+    // Init mediapipe for calibration
+    calibMpHands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+    });
+    calibMpHands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.5,
+    });
+    calibMpHands.onResults(onCalibResults);
+    
+    const calibCam = new Camera(calibVideo, {
+      onFrame: async () => {
+        if (calibMpHands && !calibrationComplete) await calibMpHands.send({ image: calibVideo });
+      },
+      width: 320,
+      height: 240,
+    });
+    calibCam.start();
+    
+  } catch (err) {
+    console.error(err);
+    document.querySelector('.cam-perm-desc').textContent = 'Camera access was denied. Please allow camera access and try again.';
+    document.querySelector('.cam-perm-desc').style.color = '#f43f5e';
+  }
 });
+
+let lastCalibTime = performance.now();
+
+function onCalibResults(results) {
+  if (calibrationComplete) return;
+  
+  const calibCanvas = document.getElementById('calib-hand-canvas');
+  const calibCtx = calibCanvas.getContext('2d');
+  calibCanvas.width = calibCanvas.clientWidth;
+  calibCanvas.height = calibCanvas.clientHeight;
+  calibCtx.clearRect(0, 0, calibCanvas.width, calibCanvas.height);
+  
+  const now = performance.now();
+  const dt = (now - lastCalibTime) / 1000;
+  lastCalibTime = now;
+  
+  const statusEl = document.getElementById('calib-status');
+  const statusText = document.getElementById('calib-status-text');
+  const fistGuide = document.getElementById('fist-guide');
+  const ringFg = document.getElementById('calib-ring-fg');
+  const circumference = 2 * Math.PI * 90; // r=90
+  
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const landmarks = results.multiHandLandmarks[0];
+    
+    // Draw landmarks on calib canvas
+    calibCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+    calibCtx.lineWidth = 1.5;
+    const connections = [
+      [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+      [5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],
+      [13,17],[17,18],[18,19],[19,20],[0,17]
+    ];
+    connections.forEach(([a, b]) => {
+      calibCtx.beginPath();
+      calibCtx.moveTo(landmarks[a].x * calibCanvas.width, landmarks[a].y * calibCanvas.height);
+      calibCtx.lineTo(landmarks[b].x * calibCanvas.width, landmarks[b].y * calibCanvas.height);
+      calibCtx.stroke();
+    });
+    landmarks.forEach((lm, idx) => {
+      calibCtx.beginPath();
+      const sz = [4, 8, 12, 16, 20].includes(idx) ? 4 : 2.5;
+      calibCtx.arc(lm.x * calibCanvas.width, lm.y * calibCanvas.height, sz, 0, Math.PI * 2);
+      calibCtx.fillStyle = [4, 8, 12, 16, 20].includes(idx) ? '#a855f7' : 'rgba(255,255,255,0.7)';
+      calibCtx.fill();
+    });
+    
+    // Check if fist
+    const wrist = landmarks[0];
+    const palmBase = landmarks[9];
+    const palmDx = palmBase.x - wrist.x;
+    const palmDy = palmBase.y - wrist.y;
+    const palmSize = Math.sqrt(palmDx * palmDx + palmDy * palmDy);
+    
+    let isFist = false;
+    if (palmSize > 0.01) {
+      const fingers = [
+        { tip: 8, pip: 6 }, { tip: 12, pip: 10 },
+        { tip: 16, pip: 14 }, { tip: 20, pip: 18 },
+      ];
+      let extendedCount = 0;
+      fingers.forEach(f => {
+        const tipDx = landmarks[f.tip].x - wrist.x;
+        const tipDy = landmarks[f.tip].y - wrist.y;
+        const tipDist = Math.sqrt(tipDx * tipDx + tipDy * tipDy);
+        const pipDx = landmarks[f.pip].x - wrist.x;
+        const pipDy = landmarks[f.pip].y - wrist.y;
+        const pipDist = Math.sqrt(pipDx * pipDx + pipDy * pipDy);
+        if (tipDist > pipDist * 1.05) extendedCount++;
+      });
+      const thumbTipDx = landmarks[4].x - landmarks[2].x;
+      const thumbTipDy = landmarks[4].y - landmarks[2].y;
+      const thumbDist = Math.sqrt(thumbTipDx * thumbTipDx + thumbTipDy * thumbTipDy);
+      if (thumbDist / palmSize > 0.6) extendedCount++;
+      
+      isFist = extendedCount <= 1;
+    }
+    
+    fistGuide.classList.add('detected');
+    
+    if (isFist) {
+      calibFistHoldTime += dt;
+      statusEl.className = 'calib-status detecting';
+      
+      const progress = Math.min(calibFistHoldTime / CALIB_FIST_REQUIRED, 1);
+      statusText.textContent = progress < 1 ? 'Hold your fist...' : 'Ready!';
+      
+      // Update ring progress
+      const offset = circumference * (1 - progress);
+      ringFg.style.strokeDashoffset = offset;
+      
+      if (progress >= 1) {
+        statusEl.className = 'calib-status ready';
+        statusText.textContent = 'Let\'s go! ✦';
+        calibrationComplete = true;
+        
+        // Transition to main experience
+        setTimeout(() => {
+          finishCalibration();
+        }, 500);
+      }
+    } else {
+      // Reset if hand opens
+      calibFistHoldTime = Math.max(0, calibFistHoldTime - dt * 2);
+      statusEl.className = 'calib-status detecting';
+      statusText.textContent = 'Close your hand into a fist';
+      const progress = Math.min(calibFistHoldTime / CALIB_FIST_REQUIRED, 1);
+      const offset = circumference * (1 - progress);
+      ringFg.style.strokeDashoffset = offset;
+    }
+  } else {
+    // No hand detected
+    calibFistHoldTime = Math.max(0, calibFistHoldTime - dt * 3);
+    fistGuide.classList.remove('detected');
+    statusEl.className = 'calib-status';
+    statusText.textContent = 'Waiting for hand...';
+    const progress = Math.min(calibFistHoldTime / CALIB_FIST_REQUIRED, 1);
+    const offset = circumference * (1 - progress);
+    ringFg.style.strokeDashoffset = offset;
+  }
+}
+
+async function finishCalibration() {
+  // Hide calibration overlay
+  document.getElementById('calibration-overlay').classList.add('hidden');
+  document.body.classList.remove('calibrating');
+  
+  // Close calibration mediapipe
+  if (calibMpHands) {
+    calibMpHands.close();
+    calibMpHands = null;
+  }
+  
+  // Use the existing stream for the main hand tracking
+  videoEl.srcObject = calibStream;
+  
+  mpHands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+  });
+  mpHands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5,
+  });
+  mpHands.onResults(onHandResults);
+  
+  mpCamera = new Camera(videoEl, {
+    onFrame: async () => {
+      if (mpHands) await mpHands.send({ image: videoEl });
+    },
+    width: 320,
+    height: 240,
+  });
+  mpCamera.start();
+  state.cameraActive = true;
+  document.getElementById('webcam-container').style.display = '';
+  document.getElementById('btn-toggle-cam').classList.add('active');
+  showToast('✊ Fist = shape  ·  🖐 Open = disperse  ·  Drag to rotate');
+}
 
 // Mobile panel toggle
 document.getElementById('mobile-panel-toggle').addEventListener('click', () => {
@@ -1531,7 +1897,7 @@ window.addEventListener('load', () => {
   setTimeout(() => {
     document.getElementById('loading-overlay').classList.add('fade-out');
     setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 600);
-  }, 800);
+  }, 500);
 });
 </script>
 </body>
