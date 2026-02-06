@@ -709,6 +709,229 @@ body.calibrating #webcam-container {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Tutorial Popup ─── */
+#tutorial-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(10, 6, 18, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+#tutorial-popup.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tutorial-card {
+  background: rgba(20, 14, 35, 0.9);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  padding: 36px 32px 28px;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  animation: tutorialIn 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 20px 80px rgba(0,0,0,0.5), 0 0 60px rgba(168, 85, 247, 0.08);
+}
+
+@keyframes tutorialIn {
+  from { opacity: 0; transform: scale(0.92) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tutorial-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tutorial-title {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff 30%, var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tutorial-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+/* Gesture demo cards */
+.tutorial-gestures {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gesture-demo-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+}
+
+.gesture-demo-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-light);
+}
+
+/* Hand illustration container */
+.gesture-hand-visual {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(232, 121, 249, 0.08));
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.gesture-hand-visual svg {
+  width: 52px;
+  height: 52px;
+}
+
+/* Arrow between states */
+.gesture-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gesture-arrow svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
+}
+
+/* Particle preview mini illustration */
+.gesture-result-visual {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.gesture-result-visual.compact {
+  background: radial-gradient(circle at center, rgba(168,85,247,0.3) 0%, rgba(168,85,247,0.05) 50%, transparent 70%);
+}
+
+.gesture-result-visual.dispersed {
+  background: radial-gradient(circle at center, transparent 10%, rgba(168,85,247,0.05) 30%, rgba(168,85,247,0.12) 70%);
+}
+
+/* Dots for particle preview */
+.particle-dots {
+  position: absolute;
+  inset: 0;
+}
+
+.particle-dots span {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--primary-light);
+}
+
+.gesture-demo-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gesture-demo-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gesture-demo-tag {
+  font-size: 9px;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(168, 85, 247, 0.15);
+  color: var(--primary-light);
+}
+
+.gesture-demo-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Visual flow row — hand → arrow → result */
+.gesture-visual-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tutorial-btn {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  border: none;
+  color: #fff;
+  padding: 14px 24px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  box-shadow: 0 4px 20px var(--primary-glow);
+  width: 100%;
+}
+
+.tutorial-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px var(--primary-glow);
+}
+
+.tutorial-tip {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
 /* ─── Old Onboarding (removed, keeping hidden class for compat) ─── */
 #onboarding { display: none; }
 #onboarding.hidden { display: none; }
@@ -848,7 +1071,112 @@ body.calibrating #webcam-container {
   </div>
 </div>
 
-<!-- 3D Canvas -->
+<!-- Tutorial Popup -->
+<div id="tutorial-popup">
+  <div class="tutorial-card">
+    <div class="tutorial-header">
+      <div class="tutorial-title">How to Control ✦</div>
+      <div class="tutorial-subtitle">Use hand gestures to interact with the particles</div>
+    </div>
+    
+    <div class="tutorial-gestures">
+      <!-- Fist gesture -->
+      <div class="gesture-demo-card">
+        <div class="gesture-visual-flow">
+          <div class="gesture-hand-visual">
+            <svg viewBox="0 0 52 52" fill="none">
+              <rect x="12" y="14" width="28" height="24" rx="10" 
+                stroke="rgba(168,85,247,0.9)" stroke-width="1.8" fill="rgba(168,85,247,0.08)"/>
+              <path d="M16 18 C20 15 32 15 36 18" stroke="rgba(168,85,247,0.5)" stroke-width="1.2" stroke-linecap="round"/>
+              <path d="M15 24 C22 22 30 22 37 24" stroke="rgba(168,85,247,0.35)" stroke-width="1" stroke-dasharray="2 2"/>
+              <path d="M14 30 C12 26 12 20 15 17" stroke="rgba(168,85,247,0.7)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div class="gesture-arrow">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="gesture-result-visual compact">
+            <div class="particle-dots">
+              <span style="top:30%;left:42%;opacity:0.9"></span>
+              <span style="top:35%;left:50%;opacity:1;width:4px;height:4px"></span>
+              <span style="top:28%;left:56%;opacity:0.8"></span>
+              <span style="top:42%;left:44%;opacity:0.7"></span>
+              <span style="top:45%;left:52%;opacity:0.9;width:4px;height:4px"></span>
+              <span style="top:40%;left:60%;opacity:0.6"></span>
+              <span style="top:50%;left:48%;opacity:0.8"></span>
+              <span style="top:55%;left:54%;opacity:0.7"></span>
+              <span style="top:38%;left:38%;opacity:0.5"></span>
+              <span style="top:48%;left:58%;opacity:0.6"></span>
+              <span style="top:33%;left:48%;opacity:0.8;width:3px;height:3px"></span>
+              <span style="top:52%;left:42%;opacity:0.5"></span>
+            </div>
+          </div>
+        </div>
+        <div class="gesture-demo-info">
+          <div class="gesture-demo-label">
+            ✊ Close Fist
+            <span class="gesture-demo-tag">Form</span>
+          </div>
+          <div class="gesture-demo-desc">Particles gather and form the selected shape</div>
+        </div>
+      </div>
+
+      <!-- Open hand gesture -->
+      <div class="gesture-demo-card">
+        <div class="gesture-visual-flow">
+          <div class="gesture-hand-visual">
+            <svg viewBox="0 0 52 60" fill="none">
+              <ellipse cx="26" cy="38" rx="12" ry="14" stroke="rgba(168,85,247,0.7)" stroke-width="1.5" fill="rgba(168,85,247,0.06)"/>
+              <line x1="16" y1="28" x2="10" y2="10" stroke="rgba(168,85,247,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="21" y1="25" x2="18" y2="6" stroke="rgba(168,85,247,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="26" y1="24" x2="26" y2="4" stroke="rgba(168,85,247,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="31" y1="25" x2="34" y2="6" stroke="rgba(168,85,247,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+              <line x1="36" y1="28" x2="42" y2="12" stroke="rgba(168,85,247,0.8)" stroke-width="1.8" stroke-linecap="round"/>
+              <circle cx="10" cy="9" r="2.5" fill="rgba(168,85,247,0.4)"/>
+              <circle cx="18" cy="5" r="2.5" fill="rgba(168,85,247,0.4)"/>
+              <circle cx="26" cy="3" r="2.5" fill="rgba(168,85,247,0.4)"/>
+              <circle cx="34" cy="5" r="2.5" fill="rgba(168,85,247,0.4)"/>
+              <circle cx="42" cy="11" r="2.5" fill="rgba(168,85,247,0.4)"/>
+            </svg>
+          </div>
+          <div class="gesture-arrow">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14M13 6l6 6-6 6" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="gesture-result-visual dispersed">
+            <div class="particle-dots">
+              <span style="top:10%;left:15%;opacity:0.4"></span>
+              <span style="top:18%;left:72%;opacity:0.5"></span>
+              <span style="top:25%;left:35%;opacity:0.3"></span>
+              <span style="top:55%;left:80%;opacity:0.4"></span>
+              <span style="top:70%;left:20%;opacity:0.5"></span>
+              <span style="top:80%;left:65%;opacity:0.3"></span>
+              <span style="top:40%;left:10%;opacity:0.4"></span>
+              <span style="top:62%;left:50%;opacity:0.35"></span>
+              <span style="top:15%;left:50%;opacity:0.45"></span>
+              <span style="top:75%;left:42%;opacity:0.3"></span>
+              <span style="top:45%;left:68%;opacity:0.4"></span>
+              <span style="top:85%;left:30%;opacity:0.35"></span>
+            </div>
+          </div>
+        </div>
+        <div class="gesture-demo-info">
+          <div class="gesture-demo-label">
+            🖐 Open Hand
+            <span class="gesture-demo-tag">Release</span>
+          </div>
+          <div class="gesture-demo-desc">Particles scatter outward or reveal hidden text effects</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="tutorial-btn" id="tutorial-dismiss">Start Experience ✦</button>
+    <div class="tutorial-tip">💡 Drag to rotate the view &amp; use the side panel to change patterns</div>
+  </div>
+</div>
 <div id="canvas-container">
   <canvas id="three-canvas"></canvas>
 </div>
@@ -1622,7 +1950,7 @@ const orbitRadius = 8;
 
 function onPointerDown(e) {
   // Don't capture drag on UI elements
-  if (e.target.closest('#side-panel, #webcam-container, #top-controls, #calibration-overlay, #mobile-panel-toggle, .ctrl-btn')) return;
+  if (e.target.closest('#side-panel, #webcam-container, #top-controls, #calibration-overlay, #tutorial-popup, #mobile-panel-toggle, .ctrl-btn')) return;
   isDragging = true;
   const pt = e.touches ? e.touches[0] : e;
   prevPointerX = pt.clientX;
@@ -1841,8 +2169,23 @@ function onCalibResults(results) {
 async function finishCalibration() {
   // Hide calibration overlay
   document.getElementById('calibration-overlay').classList.add('hidden');
+  
+  // Show tutorial popup
+  setTimeout(() => {
+    document.getElementById('tutorial-popup').classList.add('visible');
+  }, 400);
+}
+
+// Tutorial dismiss — now actually start the experience
+document.getElementById('tutorial-dismiss').addEventListener('click', () => {
+  document.getElementById('tutorial-popup').classList.remove('visible');
   document.body.classList.remove('calibrating');
   
+  // Start hand tracking with calibration stream
+  startMainHandTracking();
+});
+
+async function startMainHandTracking() {
   // Close calibration mediapipe
   if (calibMpHands) {
     calibMpHands.close();
@@ -1874,7 +2217,6 @@ async function finishCalibration() {
   state.cameraActive = true;
   document.getElementById('webcam-container').style.display = '';
   document.getElementById('btn-toggle-cam').classList.add('active');
-  showToast('✊ Fist = shape  ·  🖐 Open = disperse  ·  Drag to rotate');
 }
 
 // Mobile panel toggle
