@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stardust.el — Gesture-Controlled 3D Particles</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Pacifico&family=Space+Mono:wght@400;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --primary: #a855f7;
+  --primary-light: #c084fc;
+  --primary-dark: #7c3aed;
+  --primary-glow: rgba(168, 85, 247, 0.4);
+  --accent: #e879f9;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  --surface-active: rgba(168, 85, 247, 0.15);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.12);
+  --text: #f1f0f5;
+  --text-muted: rgba(241, 240, 245, 0.5);
+  --text-dim: rgba(241, 240, 245, 0.3);
+  --glass-bg: rgba(15, 10, 25, 0.55);
+  --glass-blur: 20px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-xs: 6px;
+}
+
+body {
+  background: #0a0612;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  cursor: default;
+  user-select: none;
+}
+
+#canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+canvas#three-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Glass Panel Base ─── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* ─── Side Panel ─── */
+#side-panel {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  bottom: 20px;
+  width: 300px;
+  z-index: 100;
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+
+#side-panel::-webkit-scrollbar { display: none; }
+
+#side-panel.hidden {
+  transform: translateX(-340px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+
+.panel-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 20px var(--primary-glow);
+}
+
+.panel-title {
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #fff 40%, var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.panel-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ─── Section ─── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: 'Space Mono', monospace;
+  padding-left: 2px;
+}
+
+/* ─── Pattern Grid ─── */
+.pattern-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pattern-btn {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 10px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+}
+
+.pattern-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.pattern-btn.active {
+  background: var(--surface-active);
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), inset 0 0 20px rgba(168, 85, 247, 0.05);
+}
+
+.pattern-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.pattern-name {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* ─── Color Picker ─── */
+.color-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.color-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 16px var(--primary-glow);
+}
+
+.color-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-input-wrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.color-input-wrap input[type="color"] {
+  position: absolute;
+  inset: -8px;
+  width: 52px;
+  height: 52px;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.color-hex {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 6px 10px;
+  flex: 1;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.color-hex:focus {
+  border-color: var(--primary);
+}
+
+/* ─── Particle Count Slider ─── */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--primary-dark), var(--primary-light));
+  outline: none;
+}
+
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px var(--primary-glow);
+  cursor: pointer;
+}
+
+.slider-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  color: var(--primary-light);
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ─── Webcam Feed ─── */
+#webcam-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  width: 220px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: all 0.3s ease;
+}
+
+#webcam-container:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
+}
+
+#webcam-container.tracking .webcam-status-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.webcam-header {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.webcam-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Space Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.webcam-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  transition: all 0.3s ease;
+}
+
+.webcam-gesture-label {
+  font-size: 10px;
+  font-family: 'Space Mono', monospace;
+  color: var(--primary-light);
+}
+
+#webcam-video {
+  width: 100%;
+  display: block;
+  transform: scaleX(-1);
+  background: #000;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+}
+
+#hand-canvas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 34px);
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+/* ─── Top Right Controls ─── */
+#top-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.25s ease;
+}
+
+.ctrl-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.ctrl-btn.active {
+  color: var(--primary-light);
+  border-color: var(--primary);
+  background: var(--surface-active);
+}
+
+
+
+/* ─── Info Toast ─── */
+#info-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  z-index: 200;
+  padding: 12px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  border-radius: 50px;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#info-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ─── Loading Overlay ─── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: #0a0612;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  transition: opacity 0.6s ease;
+}
+
+#loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader-ring {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: 'Space Mono', monospace;
+}
+
+/* ─── Onboarding ─── */
+#onboarding {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  padding: 32px 28px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeInUp 0.5s ease;
+}
+
+#onboarding.hidden {
+  display: none;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translate(-50%, -45%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.onboarding-title {
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.onboarding-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-icon {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.onboarding-step-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.onboarding-step-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.onboarding-dismiss {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  border: none;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  box-shadow: 0 4px 20px var(--primary-glow);
+}
+
+.onboarding-dismiss:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px var(--primary-glow);
+}
+
+/* ─── Scrollbar (hidden) ─── */
+::-webkit-scrollbar { display: none; }
+
+/* ─── Mobile Panel Toggle ─── */
+#mobile-panel-toggle {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 50px;
+  cursor: pointer;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  #side-panel {
+    width: 100%;
+    left: 0;
+    top: auto;
+    bottom: 0;
+    max-height: 55vh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px 16px;
+    padding-bottom: 80px;
+    transform: translateY(0);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #side-panel.hidden {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  .pattern-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .pattern-btn {
+    padding: 10px 6px;
+  }
+  .pattern-icon {
+    font-size: 20px;
+  }
+  .pattern-name {
+    font-size: 10px;
+  }
+  #webcam-container {
+    width: 140px;
+    bottom: auto;
+    top: 70px;
+    right: 12px;
+  }
+  #top-controls {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
+  }
+  .ctrl-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+  #mobile-panel-toggle {
+    display: block;
+  }
+  #btn-toggle-panel {
+    display: none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-overlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Initializing</div>
+</div>
+
+<!-- Onboarding Hints -->
+<div id="onboarding" class="glass">
+  <div class="onboarding-title">Welcome to <span style="background:linear-gradient(135deg,#fff 40%,var(--primary-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Stardust.el</span></div>
+  <div class="onboarding-steps">
+    <div class="onboarding-step">
+      <span class="onboarding-icon">📷</span>
+      <div>
+        <div class="onboarding-step-title">Enable Camera</div>
+        <div class="onboarding-step-desc">Tap the camera icon (top right) and allow camera access</div>
+      </div>
+    </div>
+    <div class="onboarding-step">
+      <span class="onboarding-icon">✊</span>
+      <div>
+        <div class="onboarding-step-title">Close Hand</div>
+        <div class="onboarding-step-desc">Make a fist to contract the particles into shape</div>
+      </div>
+    </div>
+    <div class="onboarding-step">
+      <span class="onboarding-icon">🖐</span>
+      <div>
+        <div class="onboarding-step-title">Open Hand</div>
+        <div class="onboarding-step-desc">Open your palm to disperse or reveal hidden effects</div>
+      </div>
+    </div>
+    <div class="onboarding-step">
+      <span class="onboarding-icon">👆</span>
+      <div>
+        <div class="onboarding-step-title">Drag to Rotate</div>
+        <div class="onboarding-step-desc">Click & drag (or swipe on mobile) to rotate the view</div>
+      </div>
+    </div>
+  </div>
+  <button class="onboarding-dismiss" id="onboarding-dismiss">Got it, let's go ✦</button>
+</div>
+
+<!-- 3D Canvas -->
+<div id="canvas-container">
+  <canvas id="three-canvas"></canvas>
+</div>
+
+<!-- Side Panel -->
+<div id="side-panel" class="glass">
+  <div>
+    <div class="panel-header">
+      <div class="panel-logo">✦</div>
+      <div>
+        <div class="panel-title">Stardust.el</div>
+        <div class="panel-subtitle">Gesture Control</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patterns -->
+  <div class="section">
+    <div class="section-label">Pattern</div>
+    <div class="pattern-grid" id="pattern-grid">
+      <button class="pattern-btn active" data-pattern="sphere">
+        <span class="pattern-icon">◉</span>
+        <span class="pattern-name">Sphere</span>
+      </button>
+      <button class="pattern-btn" data-pattern="galaxy">
+        <span class="pattern-icon">🌀</span>
+        <span class="pattern-name">Galaxy</span>
+      </button>
+      <button class="pattern-btn" data-pattern="heart">
+        <span class="pattern-icon">♥</span>
+        <span class="pattern-name">Heart</span>
+      </button>
+      <button class="pattern-btn" data-pattern="special">
+        <span class="pattern-icon">💌</span>
+        <span class="pattern-name">Special</span>
+      </button>
+      <button class="pattern-btn" data-pattern="cube">
+        <span class="pattern-icon">◇</span>
+        <span class="pattern-name">Cube</span>
+      </button>
+      <button class="pattern-btn" data-pattern="dna">
+        <span class="pattern-icon">⧖</span>
+        <span class="pattern-name">DNA Helix</span>
+      </button>
+      <button class="pattern-btn" data-pattern="torus">
+        <span class="pattern-icon">◎</span>
+        <span class="pattern-name">Torus</span>
+      </button>
+      <button class="pattern-btn" data-pattern="wave">
+        <span class="pattern-icon">∿</span>
+        <span class="pattern-name">Wave</span>
+      </button>
+      <button class="pattern-btn" data-pattern="star">
+        <span class="pattern-icon">✦</span>
+        <span class="pattern-name">Star</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Colors -->
+  <div class="section">
+    <div class="section-label">Color</div>
+    <div class="color-presets" id="color-presets">
+      <div class="color-swatch active" data-color="#a855f7" style="background: #a855f7;"></div>
+      <div class="color-swatch" data-color="#e879f9" style="background: #e879f9;"></div>
+      <div class="color-swatch" data-color="#3b82f6" style="background: #3b82f6;"></div>
+      <div class="color-swatch" data-color="#22d3ee" style="background: #22d3ee;"></div>
+      <div class="color-swatch" data-color="#34d399" style="background: #34d399;"></div>
+      <div class="color-swatch" data-color="#f43f5e" style="background: #f43f5e;"></div>
+      <div class="color-swatch" data-color="#fb923c" style="background: #fb923c;"></div>
+      <div class="color-swatch" data-color="#facc15" style="background: #facc15;"></div>
+    </div>
+    <div class="color-custom-row">
+      <div class="color-input-wrap">
+        <input type="color" id="color-picker" value="#a855f7">
+      </div>
+      <input type="text" class="color-hex" id="color-hex" value="#a855f7" maxlength="7">
+    </div>
+  </div>
+
+  <!-- Particle Count -->
+  <div class="section">
+    <div class="section-label">Particle Count</div>
+    <div class="slider-row">
+      <input type="range" id="particle-slider" min="2000" max="30000" value="12000" step="1000">
+      <span class="slider-value" id="particle-count-label">12K</span>
+    </div>
+  </div>
+
+  <!-- Particle Size -->
+  <div class="section">
+    <div class="section-label">Particle Size</div>
+    <div class="slider-row">
+      <input type="range" id="size-slider" min="1" max="8" value="3" step="0.5">
+      <span class="slider-value" id="size-label">3.0</span>
+    </div>
+  </div>
+
+  <!-- Rotation Speed -->
+  <div class="section">
+    <div class="section-label">Rotation Speed</div>
+    <div class="slider-row">
+      <input type="range" id="rotation-slider" min="0" max="100" value="30">
+      <span class="slider-value" id="rotation-label">30%</span>
+    </div>
+  </div>
+</div>
+
+<!-- Top Controls -->
+<div id="top-controls">
+  <button class="ctrl-btn" id="btn-toggle-panel" title="Toggle Panel">☰</button>
+  <button class="ctrl-btn" id="btn-toggle-cam" title="Toggle Camera">📷</button>
+  <button class="ctrl-btn" id="btn-fullscreen" title="Fullscreen">⛶</button>
+</div>
+
+<!-- Webcam Feed -->
+<div id="webcam-container" class="glass" style="display:none;">
+  <div class="webcam-header">
+    <span class="webcam-label"><span class="webcam-status-dot"></span> HAND TRACK</span>
+    <span class="webcam-gesture-label" id="gesture-label">—</span>
+  </div>
+  <div style="position:relative;">
+    <video id="webcam-video" autoplay playsinline muted></video>
+    <canvas id="hand-canvas"></canvas>
+  </div>
+</div>
+
+
+
+<!-- Toast -->
+<div id="info-toast" class="glass"></div>
+
+<!-- Mobile Panel Toggle -->
+<button id="mobile-panel-toggle">☰ Settings</button>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- MediaPipe Hands -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+const state = {
+  pattern: 'sphere',
+  color: new THREE.Color('#a855f7'),
+  particleCount: 12000,
+  particleSize: 3,
+  rotationSpeed: 0.3,
+  gestureOpenness: 0,        // 0 = closed fist, 1 = open hand
+  targetOpenness: 0,
+  handDetected: false,
+  cameraActive: false,
+  panelVisible: true,
+};
+
+// ══════════════════════════════════════════
+//  THREE.JS SETUP
+// ══════════════════════════════════════════
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0612, 0.035);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 0, 8);
+
+// Ambient particles (background dust)
+const dustGeo = new THREE.BufferGeometry();
+const dustCount = 800;
+const dustPos = new Float32Array(dustCount * 3);
+for (let i = 0; i < dustCount * 3; i++) dustPos[i] = (Math.random() - 0.5) * 40;
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dustMat = new THREE.PointsMaterial({ color: 0x4a3670, size: 0.03, transparent: true, opacity: 0.4 });
+scene.add(new THREE.Points(dustGeo, dustMat));
+
+// ══════════════════════════════════════════
+//  PATTERN GENERATORS
+// ══════════════════════════════════════════
+function generatePattern(pattern, count) {
+  const positions = new Float32Array(count * 3);
+  switch (pattern) {
+    case 'sphere':
+      for (let i = 0; i < count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const r = 2.5 * Math.cbrt(Math.random());
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+      break;
+    case 'galaxy':
+      for (let i = 0; i < count; i++) {
+        const arm = Math.floor(Math.random() * 4);
+        const dist = Math.random() * 3;
+        const angle = dist * 2.5 + (arm * Math.PI / 2);
+        const spread = 0.3 * (1 - dist / 3);
+        positions[i * 3] = Math.cos(angle) * dist + (Math.random() - 0.5) * spread * 2;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * spread * 1.5;
+        positions[i * 3 + 2] = Math.sin(angle) * dist + (Math.random() - 0.5) * spread * 2;
+      }
+      break;
+    case 'heart':
+      for (let i = 0; i < count; i++) {
+        const t = Math.random() * Math.PI * 2;
+        const s = Math.random() * Math.PI;
+        const r = 2 * Math.cbrt(Math.random());
+        let x = r * (16 * Math.pow(Math.sin(t), 3)) / 16;
+        let y = r * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16;
+        let z = r * Math.sin(s) * 0.4 * Math.sin(t);
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y + 0.5;
+        positions[i * 3 + 2] = z;
+      }
+      break;
+    case 'cube':
+      for (let i = 0; i < count; i++) {
+        const face = Math.floor(Math.random() * 6);
+        let x = Math.random() * 2 - 1;
+        let y = Math.random() * 2 - 1;
+        let z = Math.random() * 2 - 1;
+        // Push to surface
+        const surfaceChance = Math.random();
+        if (surfaceChance > 0.3) {
+          switch (face) {
+            case 0: x = -1; break; case 1: x = 1; break;
+            case 2: y = -1; break; case 3: y = 1; break;
+            case 4: z = -1; break; case 5: z = 1; break;
+          }
+        }
+        positions[i * 3] = x * 1.8;
+        positions[i * 3 + 1] = y * 1.8;
+        positions[i * 3 + 2] = z * 1.8;
+      }
+      break;
+    case 'dna':
+      for (let i = 0; i < count; i++) {
+        const t = (i / count) * Math.PI * 6 - Math.PI * 3;
+        const strand = Math.random() > 0.5 ? 1 : -1;
+        const r = 1.2 + (Math.random() - 0.5) * 0.2;
+        if (Math.random() > 0.7) {
+          // Connection bars
+          const barT = Math.floor(i / count * 30) / 30 * Math.PI * 6 - Math.PI * 3;
+          const lerp = Math.random();
+          positions[i * 3] = Math.cos(barT) * r * lerp + Math.cos(barT + Math.PI) * r * (1 - lerp);
+          positions[i * 3 + 1] = barT * 0.4;
+          positions[i * 3 + 2] = Math.sin(barT) * r * lerp + Math.sin(barT + Math.PI) * r * (1 - lerp);
+        } else {
+          const offset = strand > 0 ? 0 : Math.PI;
+          positions[i * 3] = Math.cos(t + offset) * r;
+          positions[i * 3 + 1] = t * 0.4;
+          positions[i * 3 + 2] = Math.sin(t + offset) * r;
+        }
+      }
+      break;
+    case 'torus':
+      for (let i = 0; i < count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 2;
+        const R = 2;
+        const tubeR = 0.8 + (Math.random() - 0.5) * 0.3;
+        positions[i * 3] = (R + tubeR * Math.cos(phi)) * Math.cos(theta);
+        positions[i * 3 + 1] = tubeR * Math.sin(phi);
+        positions[i * 3 + 2] = (R + tubeR * Math.cos(phi)) * Math.sin(theta);
+      }
+      break;
+    case 'wave':
+      for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * 6;
+        const z = (Math.random() - 0.5) * 6;
+        const y = Math.sin(x * 1.5) * Math.cos(z * 1.5) * 1.2 + (Math.random() - 0.5) * 0.2;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+      }
+      break;
+    case 'star':
+      for (let i = 0; i < count; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const spikes = 5;
+        const outerR = 2.5;
+        const innerR = 1.2;
+        const spikeAngle = theta * spikes / (Math.PI * 2);
+        const blend = (Math.cos(spikeAngle * Math.PI * 2) + 1) / 2;
+        const r = (innerR + (outerR - innerR) * blend) * Math.cbrt(Math.random());
+        positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+      break;
+    case 'special':
+      // Heart shape as base (fist closed)
+      for (let i = 0; i < count; i++) {
+        const t = Math.random() * Math.PI * 2;
+        const s = Math.random() * Math.PI;
+        const r = 2 * Math.cbrt(Math.random());
+        let x = r * (16 * Math.pow(Math.sin(t), 3)) / 16;
+        let y = r * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t)) / 16;
+        let z = r * Math.sin(s) * 0.4 * Math.sin(t);
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y + 0.5;
+        positions[i * 3 + 2] = z;
+      }
+      break;
+  }
+  return positions;
+}
+
+// Generate text particle positions using offscreen canvas
+// Must ensure font is loaded before calling
+let _fontLoaded = false;
+async function ensureFontLoaded() {
+  if (_fontLoaded) return;
+  try {
+    await document.fonts.load('bold 100px Pacifico');
+    _fontLoaded = true;
+  } catch(e) {
+    console.warn('Font load failed, using fallback');
+  }
+}
+
+function generateTextPositions(text, count) {
+  const positions = new Float32Array(count * 3);
+  const cvs = document.createElement('canvas');
+  cvs.width = 1024;
+  cvs.height = 300;
+  const ctx = cvs.getContext('2d');
+  
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 90px Pacifico, cursive';
+  ctx.fillText(text, cvs.width / 2, cvs.height / 2);
+  
+  const imageData = ctx.getImageData(0, 0, cvs.width, cvs.height);
+  const pixels = imageData.data;
+  
+  // Collect all lit pixel coords
+  const litPixels = [];
+  for (let y = 0; y < cvs.height; y += 2) {
+    for (let x = 0; x < cvs.width; x += 2) {
+      const idx = (y * cvs.width + x) * 4;
+      if (pixels[idx] > 100) {
+        litPixels.push({ x, y });
+      }
+    }
+  }
+  
+  // Scale: map canvas coords to 3D space
+  const scaleX = 10 / cvs.width;
+  const scaleY = 5 / cvs.height;
+  
+  for (let i = 0; i < count; i++) {
+    if (litPixels.length > 0) {
+      const px = litPixels[Math.floor(Math.random() * litPixels.length)];
+      positions[i * 3]     = (px.x - cvs.width / 2) * scaleX + (Math.random() - 0.5) * 0.05;
+      positions[i * 3 + 1] = -(px.y - cvs.height / 2) * scaleY + (Math.random() - 0.5) * 0.05;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+    } else {
+      // Fallback sphere
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 2.5 * Math.cbrt(Math.random());
+      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = r * Math.cos(phi);
+    }
+  }
+  
+  return positions;
+}
+
+// ══════════════════════════════════════════
+//  PARTICLE SYSTEM
+// ══════════════════════════════════════════
+let particles, particleMaterial, particleGeometry;
+let basePositions;
+let dispersedPositions;
+
+async function createParticles() {
+  if (particles) {
+    scene.remove(particles);
+    particleGeometry.dispose();
+    particleMaterial.dispose();
+  }
+
+  const count = state.particleCount;
+  particleGeometry = new THREE.BufferGeometry();
+  basePositions = generatePattern(state.pattern, count);
+  
+  // Generate dispersed positions
+  dispersedPositions = new Float32Array(count * 3);
+  
+  if (state.pattern === 'special') {
+    // Ensure cute font is loaded before rendering text
+    await ensureFontLoaded();
+    const textPos = generateTextPositions('I Love You', count);
+    dispersedPositions.set(textPos);
+  } else {
+    // Default: random scatter
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      const r = 5 + Math.random() * 8;
+      dispersedPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      dispersedPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      dispersedPositions[i * 3 + 2] = r * Math.cos(phi);
+    }
+  }
+
+  const positions = new Float32Array(count * 3);
+  positions.set(basePositions);
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  // Per-particle random for subtle animation
+  const randoms = new Float32Array(count);
+  for (let i = 0; i < count; i++) randoms[i] = Math.random();
+  particleGeometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+
+  particleMaterial = new THREE.PointsMaterial({
+    color: state.color,
+    size: state.particleSize * 0.01,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+
+  particles = new THREE.Points(particleGeometry, particleMaterial);
+  scene.add(particles);
+}
+
+createParticles();
+
+// ══════════════════════════════════════════
+//  ANIMATION LOOP
+// ══════════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const elapsed = clock.getElapsedTime();
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  // Smoothly interpolate gesture openness
+  state.gestureOpenness += (state.targetOpenness - state.gestureOpenness) * 0.08;
+
+  if (particles) {
+    // Update positions based on gesture
+    const posAttr = particleGeometry.attributes.position;
+    const arr = posAttr.array;
+    const openness = state.gestureOpenness;
+
+    // Rotate (slow down for special pattern when text visible)
+    const rotMult = (state.pattern === 'special') ? (1 - openness * 0.9) : 1;
+    particles.rotation.y += state.rotationSpeed * 0.005 * rotMult;
+    particles.rotation.x = Math.sin(elapsed * 0.15) * 0.1 * rotMult;
+
+    for (let i = 0; i < state.particleCount; i++) {
+      const i3 = i * 3;
+      // Lerp between base and dispersed
+      arr[i3]     = basePositions[i3]     + (dispersedPositions[i3]     - basePositions[i3])     * openness;
+      arr[i3 + 1] = basePositions[i3 + 1] + (dispersedPositions[i3 + 1] - basePositions[i3 + 1]) * openness;
+      arr[i3 + 2] = basePositions[i3 + 2] + (dispersedPositions[i3 + 2] - basePositions[i3 + 2]) * openness;
+
+      // Subtle floating
+      const rand = particleGeometry.attributes.aRandom.array[i];
+      arr[i3 + 1] += Math.sin(elapsed * 0.8 + rand * 10) * 0.02;
+    }
+    posAttr.needsUpdate = true;
+
+    // Scale based on gesture
+    const scale = (state.pattern === 'special') ? 1.0 : 1.0 + openness * 0.3;
+    particles.scale.setScalar(scale);
+
+    // Opacity fades slightly when dispersed (except special pattern)
+    if (state.pattern === 'special') {
+      particleMaterial.opacity = 0.7 + openness * 0.2;
+      particleMaterial.size = state.particleSize * 0.01 * (1 - openness * 0.3);
+    } else {
+      particleMaterial.opacity = 0.85 - openness * 0.3;
+      particleMaterial.size = state.particleSize * 0.01 * (1 + openness * 0.5);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ══════════════════════════════════════════
+//  MEDIAPIPE HANDS
+// ══════════════════════════════════════════
+const videoEl = document.getElementById('webcam-video');
+const handCanvas = document.getElementById('hand-canvas');
+const handCtx = handCanvas.getContext('2d');
+
+let mpHands = null;
+let mpCamera = null;
+
+async function initHandTracking() {
+  mpHands = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+  });
+
+  mpHands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.5,
+  });
+
+  mpHands.onResults(onHandResults);
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' } });
+    videoEl.srcObject = stream;
+
+    mpCamera = new Camera(videoEl, {
+      onFrame: async () => {
+        if (mpHands) await mpHands.send({ image: videoEl });
+      },
+      width: 320,
+      height: 240,
+    });
+    mpCamera.start();
+    state.cameraActive = true;
+    document.getElementById('webcam-container').style.display = '';
+    document.getElementById('btn-toggle-cam').classList.add('active');
+    showToast('Camera enabled — show your hand to control particles');
+  } catch (err) {
+    showToast('Camera access denied');
+    console.error(err);
+  }
+}
+
+function onHandResults(results) {
+  // Draw hand landmarks
+  handCanvas.width = handCanvas.clientWidth;
+  handCanvas.height = handCanvas.clientHeight;
+  handCtx.clearRect(0, 0, handCanvas.width, handCanvas.height);
+
+  const container = document.getElementById('webcam-container');
+  const gestureLabel = document.getElementById('gesture-label');
+
+  if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+    const landmarks = results.multiHandLandmarks[0];
+    container.classList.add('tracking');
+    state.handDetected = true;
+
+    // Draw connections
+    handCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)';
+    handCtx.lineWidth = 1.5;
+    const connections = [
+      [0,1],[1,2],[2,3],[3,4],
+      [0,5],[5,6],[6,7],[7,8],
+      [5,9],[9,10],[10,11],[11,12],
+      [9,13],[13,14],[14,15],[15,16],
+      [13,17],[17,18],[18,19],[19,20],[0,17]
+    ];
+    connections.forEach(([a, b]) => {
+      handCtx.beginPath();
+      handCtx.moveTo(landmarks[a].x * handCanvas.width, landmarks[a].y * handCanvas.height);
+      handCtx.lineTo(landmarks[b].x * handCanvas.width, landmarks[b].y * handCanvas.height);
+      handCtx.stroke();
+    });
+
+    // Draw points
+    landmarks.forEach((lm, idx) => {
+      handCtx.beginPath();
+      const sz = [4, 8, 12, 16, 20].includes(idx) ? 4 : 2.5;
+      handCtx.arc(lm.x * handCanvas.width, lm.y * handCanvas.height, sz, 0, Math.PI * 2);
+      handCtx.fillStyle = [4, 8, 12, 16, 20].includes(idx) ? '#a855f7' : 'rgba(255,255,255,0.7)';
+      handCtx.fill();
+    });
+
+    // Calculate openness using finger curl detection (more accurate)
+    const wrist = landmarks[0];
+    const palmBase = landmarks[9]; // middle finger base
+    
+    // Calculate palm size for normalization
+    const palmDx = palmBase.x - wrist.x;
+    const palmDy = palmBase.y - wrist.y;
+    const palmSize = Math.sqrt(palmDx * palmDx + palmDy * palmDy);
+    
+    if (palmSize < 0.01) { state.targetOpenness = 0; return; }
+    
+    // Check each finger: compare tip-to-wrist vs knuckle-to-wrist distance
+    const fingers = [
+      { tip: 8,  pip: 6 },   // index
+      { tip: 12, pip: 10 },  // middle
+      { tip: 16, pip: 14 },  // ring
+      { tip: 20, pip: 18 },  // pinky
+    ];
+    
+    let extendedCount = 0;
+    fingers.forEach(f => {
+      const tipDx = landmarks[f.tip].x - wrist.x;
+      const tipDy = landmarks[f.tip].y - wrist.y;
+      const tipDist = Math.sqrt(tipDx * tipDx + tipDy * tipDy);
+      
+      const pipDx = landmarks[f.pip].x - wrist.x;
+      const pipDy = landmarks[f.pip].y - wrist.y;
+      const pipDist = Math.sqrt(pipDx * pipDx + pipDy * pipDy);
+      
+      // Finger is extended if tip is further from wrist than PIP joint
+      if (tipDist > pipDist * 1.05) extendedCount++;
+    });
+    
+    // Thumb check separately (compare tip to IP joint distance from palm center)
+    const thumbTipDx = landmarks[4].x - landmarks[2].x;
+    const thumbTipDy = landmarks[4].y - landmarks[2].y;
+    const thumbDist = Math.sqrt(thumbTipDx * thumbTipDx + thumbTipDy * thumbTipDy);
+    if (thumbDist / palmSize > 0.6) extendedCount++;
+    
+    // Map 0-5 extended fingers to openness with dead zones
+    let openness;
+    if (extendedCount <= 1) {
+      openness = 0;  // Fist - hard snap to 0
+    } else if (extendedCount >= 4) {
+      openness = 1;  // Full open
+    } else {
+      openness = (extendedCount - 1) / 3; // 2-3 fingers = partial
+    }
+    
+    state.targetOpenness = openness;
+
+    // Update UI
+    if (openness > 0.65) {
+      gestureLabel.textContent = 'OPEN';
+    } else if (openness < 0.3) {
+      gestureLabel.textContent = 'FIST';
+    } else {
+      gestureLabel.textContent = 'HALF';
+    }
+
+  } else {
+    container.classList.remove('tracking');
+    state.handDetected = false;
+    gestureLabel.textContent = '—';
+    state.targetOpenness = 0;
+  }
+}
+
+// ══════════════════════════════════════════
+//  UI INTERACTIONS
+// ══════════════════════════════════════════
+
+// Pattern buttons
+document.querySelectorAll('.pattern-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.pattern = btn.dataset.pattern;
+    createParticles();
+  });
+});
+
+// Color presets
+document.querySelectorAll('.color-swatch').forEach(swatch => {
+  swatch.addEventListener('click', () => {
+    const c = swatch.dataset.color;
+    setColor(c);
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    swatch.classList.add('active');
+  });
+});
+
+function setColor(hex) {
+  state.color.set(hex);
+  if (particleMaterial) particleMaterial.color.set(hex);
+  document.getElementById('color-picker').value = hex;
+  document.getElementById('color-hex').value = hex;
+}
+
+document.getElementById('color-picker').addEventListener('input', (e) => {
+  setColor(e.target.value);
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+});
+
+document.getElementById('color-hex').addEventListener('change', (e) => {
+  let v = e.target.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+    setColor(v);
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  }
+});
+
+// Sliders
+document.getElementById('particle-slider').addEventListener('input', (e) => {
+  state.particleCount = parseInt(e.target.value);
+  document.getElementById('particle-count-label').textContent = (state.particleCount / 1000).toFixed(0) + 'K';
+  createParticles();
+});
+
+document.getElementById('size-slider').addEventListener('input', (e) => {
+  state.particleSize = parseFloat(e.target.value);
+  document.getElementById('size-label').textContent = state.particleSize.toFixed(1);
+  if (particleMaterial) particleMaterial.size = state.particleSize * 0.01;
+});
+
+document.getElementById('rotation-slider').addEventListener('input', (e) => {
+  state.rotationSpeed = parseInt(e.target.value) / 100;
+  document.getElementById('rotation-label').textContent = e.target.value + '%';
+});
+
+// Top controls
+document.getElementById('btn-toggle-panel').addEventListener('click', () => {
+  state.panelVisible = !state.panelVisible;
+  document.getElementById('side-panel').classList.toggle('hidden', !state.panelVisible);
+  document.getElementById('btn-toggle-panel').classList.toggle('active', state.panelVisible);
+});
+
+document.getElementById('btn-toggle-cam').addEventListener('click', () => {
+  if (!state.cameraActive) {
+    initHandTracking();
+  } else {
+    // Toggle webcam visibility
+    const wc = document.getElementById('webcam-container');
+    const visible = wc.style.display !== 'none';
+    wc.style.display = visible ? 'none' : '';
+  }
+});
+
+document.getElementById('btn-fullscreen').addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+function showToast(msg) {
+  const toast = document.getElementById('info-toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════
+//  RESIZE
+// ══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ══════════════════════════════════════════
+//  DRAG TO ROTATE (Mouse + Touch)
+// ══════════════════════════════════════════
+let isDragging = false;
+let prevPointerX = 0, prevPointerY = 0;
+let orbitX = 0, orbitY = 0;
+let targetOrbitX = 0, targetOrbitY = 0;
+const orbitRadius = 8;
+
+function onPointerDown(e) {
+  // Don't capture drag on UI elements
+  if (e.target.closest('#side-panel, #webcam-container, #top-controls, #onboarding, #mobile-panel-toggle, .ctrl-btn')) return;
+  isDragging = true;
+  const pt = e.touches ? e.touches[0] : e;
+  prevPointerX = pt.clientX;
+  prevPointerY = pt.clientY;
+}
+
+function onPointerMove(e) {
+  if (!isDragging) return;
+  const pt = e.touches ? e.touches[0] : e;
+  const dx = pt.clientX - prevPointerX;
+  const dy = pt.clientY - prevPointerY;
+  targetOrbitX -= dx * 0.005;
+  targetOrbitY += dy * 0.005;
+  targetOrbitY = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, targetOrbitY));
+  prevPointerX = pt.clientX;
+  prevPointerY = pt.clientY;
+}
+
+function onPointerUp() {
+  isDragging = false;
+}
+
+// Mouse events
+document.addEventListener('mousedown', onPointerDown);
+document.addEventListener('mousemove', onPointerMove);
+document.addEventListener('mouseup', onPointerUp);
+
+// Touch events
+document.addEventListener('touchstart', onPointerDown, { passive: true });
+document.addEventListener('touchmove', onPointerMove, { passive: true });
+document.addEventListener('touchend', onPointerUp);
+
+function updateCameraOrbit() {
+  requestAnimationFrame(updateCameraOrbit);
+  // Smooth interpolation
+  orbitX += (targetOrbitX - orbitX) * 0.06;
+  orbitY += (targetOrbitY - orbitY) * 0.06;
+  
+  camera.position.x = Math.sin(orbitX) * Math.cos(orbitY) * orbitRadius;
+  camera.position.y = Math.sin(orbitY) * orbitRadius;
+  camera.position.z = Math.cos(orbitX) * Math.cos(orbitY) * orbitRadius;
+  camera.lookAt(0, 0, 0);
+}
+updateCameraOrbit();
+
+// ══════════════════════════════════════════
+//  ONBOARDING
+// ══════════════════════════════════════════
+document.getElementById('onboarding-dismiss').addEventListener('click', () => {
+  document.getElementById('onboarding').classList.add('hidden');
+});
+
+// Mobile panel toggle
+document.getElementById('mobile-panel-toggle').addEventListener('click', () => {
+  const panel = document.getElementById('side-panel');
+  panel.classList.toggle('hidden');
+  const btn = document.getElementById('mobile-panel-toggle');
+  btn.textContent = panel.classList.contains('hidden') ? '☰ Settings' : '✕ Close';
+});
+
+// Start with panel hidden on mobile
+if (window.innerWidth <= 768) {
+  document.getElementById('side-panel').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════
+//  LOADING DONE
+// ══════════════════════════════════════════
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loading-overlay').classList.add('fade-out');
+    setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 600);
+  }, 800);
+});
+</script>
+</body>
+</html>
