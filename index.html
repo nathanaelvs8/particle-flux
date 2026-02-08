@@ -1119,7 +1119,7 @@ body.calibrating #webcam-container {
             ✊ Close Fist
             <span class="gesture-demo-tag">Form</span>
           </div>
-          <div class="gesture-demo-desc">Particles gather and form the selected shape</div>
+          <div class="gesture-demo-desc">Particles gather and form the selected shape — move hand to steer</div>
         </div>
       </div>
 
@@ -1168,7 +1168,7 @@ body.calibrating #webcam-container {
             🖐 Open Hand
             <span class="gesture-demo-tag">Release</span>
           </div>
-          <div class="gesture-demo-desc">Particles scatter outward or reveal hidden text effects</div>
+          <div class="gesture-demo-desc">Particles scatter outward — move your hand around to steer them</div>
         </div>
       </div>
     </div>
@@ -1334,6 +1334,11 @@ const state = {
   handDetected: false,
   cameraActive: false,
   panelVisible: true,
+  // Hand position tracking — palm center mapped to 3D offset
+  handX: 0,           // current smoothed X
+  handY: 0,           // current smoothed Y
+  targetHandX: 0,     // target X from detection
+  targetHandY: 0,     // target Y from detection
 };
 
 // ══════════════════════════════════════════
@@ -1635,6 +1640,10 @@ function animate() {
   // Smoothly interpolate gesture openness
   state.gestureOpenness += (state.targetOpenness - state.gestureOpenness) * 0.08;
 
+  // Smoothly interpolate hand position
+  state.handX += (state.targetHandX - state.handX) * 0.10;
+  state.handY += (state.targetHandY - state.handY) * 0.10;
+
   if (particles) {
     // Update positions based on gesture
     const posAttr = particleGeometry.attributes.position;
@@ -1658,6 +1667,16 @@ function animate() {
       arr[i3 + 1] += Math.sin(elapsed * 0.8 + rand * 10) * 0.02;
     }
     posAttr.needsUpdate = true;
+
+    // Move entire particle group based on hand position (works for fist AND open)
+    if (state.handDetected) {
+      particles.position.x += (state.handX - particles.position.x) * 0.12;
+      particles.position.y += (state.handY - particles.position.y) * 0.12;
+    } else {
+      // Drift back to center when no hand
+      particles.position.x += (0 - particles.position.x) * 0.04;
+      particles.position.y += (0 - particles.position.y) * 0.04;
+    }
 
     // Scale based on gesture
     const scale = (state.pattern === 'special') ? 1.0 : 1.0 + openness * 0.3;
@@ -1814,6 +1833,14 @@ function onHandResults(results) {
     
     state.targetOpenness = openness;
 
+    // ── Hand position tracking ──
+    const palmCenterX = (landmarks[0].x + landmarks[5].x + landmarks[9].x + landmarks[13].x + landmarks[17].x) / 5;
+    const palmCenterY = (landmarks[0].y + landmarks[5].y + landmarks[9].y + landmarks[13].y + landmarks[17].y) / 5;
+    const mappedX = -(palmCenterX - 0.5) * 8;
+    const mappedY = -(palmCenterY - 0.5) * 6;
+    state.targetHandX = mappedX;
+    state.targetHandY = mappedY;
+
     // Update UI
     if (openness > 0.65) {
       gestureLabel.textContent = 'OPEN';
@@ -1828,6 +1855,8 @@ function onHandResults(results) {
     state.handDetected = false;
     gestureLabel.textContent = '—';
     state.targetOpenness = 0;
+    state.targetHandX = 0;
+    state.targetHandY = 0;
   }
 }
 
